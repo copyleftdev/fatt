@@ -64,22 +64,32 @@ pub fn set_verbosity(verbose: bool) {
 }
 
 /// Log scan statistics
-pub fn log_scan_stats(
-    total_domains: usize,
-    scanned_domains: usize,
-    findings: usize,
-    elapsed_secs: f64
-) {
-    let domains_per_second = if elapsed_secs > 0.0 {
-        scanned_domains as f64 / elapsed_secs
-    } else {
-        0.0
-    };
+pub fn log_scan_stats(domain_count: usize, checks_count: usize, findings_count: usize, elapsed_secs: f64) {
+    // Calculate scan rate
+    let scan_rate = domain_count as f64 / elapsed_secs;
     
-    info!(
-        "📊 Scan Statistics: Scanned {}/{} domains in {:.1}s ({:.1} domains/sec), Found {} findings",
-        scanned_domains, total_domains, elapsed_secs, domains_per_second, findings
+    info!("📊 Scan Statistics: Scanned {}/{} domains in {:.1}s ({:.1} domains/sec), Found {} findings", 
+        checks_count,
+        domain_count,
+        elapsed_secs,
+        scan_rate,
+        findings_count
     );
+    
+    // Add a more detailed summary if findings were found
+    if findings_count > 0 {
+        info!("🔍 Summary: Found {} security issues across {} domains", 
+            findings_count, 
+            domain_count
+        );
+        info!("📝 Run 'fatt results list' to see detailed findings");
+        info!("📊 Run 'fatt results export -o findings.csv' to export results");
+    } else {
+        info!("✅ No security issues found across {} domains", domain_count);
+    }
+    
+    // Print a separator line for clarity
+    info!("────────────────────────────────────────────────────────────────");
 }
 
 /// Log a successful finding

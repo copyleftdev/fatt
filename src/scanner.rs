@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
 use futures::{stream, StreamExt};
-use indicatif::{MultiProgress, ProgressBar};
-use reqwest::{Client, StatusCode};
+use reqwest::Client;
 use rusqlite::Connection;
 use std::sync::Arc;
-use std::time::Instant;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 use tracing::{debug, error, info, warn};
 
@@ -12,7 +12,7 @@ use crate::config::ScanConfig;
 use crate::db;
 use crate::logger;
 use crate::resolver::DnsResolver;
-use crate::rules::{Rule, RuleSet};
+use crate::rules::RuleSet;
 use crate::utils;
 
 /// Run a scanning session
@@ -61,35 +61,50 @@ pub async fn run_scan(config: ScanConfig) -> Result<()> {
         .build()
         .context("Failed to build HTTP client")?;
     
-    // Create a multi-progress for tracking
-    let multi_pb = MultiProgress::new();
-    
-    // Add domain progress bar
-    let domain_pb = utils::create_progress_bar(
-        domains.len() as u64,
-        "Scanning domains",
-        &multi_pb,
-    );
-    
-    // Total scan calculations
-    let total_scans = domains.len() * ruleset.rules.len();
-    let scan_pb = utils::create_progress_bar(
-        total_scans as u64,
-        "Running scan tasks",
-        &multi_pb,
-    );
-    
     // Counter for matches found
-    let matches_found = Arc::new(Mutex::new(0));
+    let matches_found = Arc::new(AtomicUsize::new(0));
+    let domains_processed = Arc::new(AtomicUsize::new(0));
+    let tasks_completed = Arc::new(AtomicUsize::new(0));
     
     // Chunk domains for batch processing
     let batch_size = 100; // Default batch size if not specified
     let domain_chunks = utils::chunk_vector(domains, batch_size);
+    let total_domains = domain_chunks.iter().map(|chunk| chunk.len()).sum::<usize>();
+    let total_tasks = total_domains * ruleset.rules.len();
+    
     info!("🚀 Starting scan of {} domains with {} rules ({} total checks)", 
-        domain_chunks.iter().map(|chunk| chunk.len()).sum::<usize>(),
+        total_domains,
         ruleset.rules.len(), 
-        total_scans
+        total_tasks
     );
+    
+    // Status update task
+    let status_interval = Duration::from_secs(3);
+    let domains_processed_clone = domains_processed.clone();
+    let tasks_completed_clone = tasks_completed.clone();
+    let total_domains_clone = total_domains;
+    let total_tasks_clone = total_tasks;
+    
+    // Spawn status update task
+    let status_handle = tokio::spawn(async move {
+        let mut interval = tokio::time::interval(status_interval);
+        loop {
+            interval.tick().await;
+            let domains_done = domains_processed_clone.load(Ordering::Relaxed);
+            let tasks_done = tasks_completed_clone.load(Ordering::Relaxed);
+            let domains_percent = (domains_done as f64 / total_domains_clone as f64 * 100.0) as usize;
+            let tasks_percent = (tasks_done as f64 / total_tasks_clone as f64 * 100.0) as usize;
+            
+            info!("📊 Status: {}/{} domains ({}%), {}/{} tasks ({}%)", 
+                domains_done, total_domains_clone, domains_percent,
+                tasks_done, total_tasks_clone, tasks_percent
+            );
+            
+            if domains_done >= total_domains_clone && tasks_done >= total_tasks_clone {
+                break;
+            }
+        }
+    });
     
     // Process domain chunks
     for (chunk_idx, chunk) in domain_chunks.iter().enumerate() {
@@ -106,24 +121,26 @@ pub async fn run_scan(config: ScanConfig) -> Result<()> {
                 let ruleset = ruleset.clone();
                 let resolver = resolver.clone();
                 let db_conn = db_conn.clone();
-                let domain_pb = domain_pb.clone();
-                let scan_pb = scan_pb.clone();
                 let matches_found = matches_found.clone();
+                let domains_processed = domains_processed.clone();
+                let tasks_completed = tasks_completed.clone();
                 
                 async move {
-                    scan_domain(
+                    // Call scan_domain which will increment scan_pb for each rule
+                    let result = scan_domain(
                         domain,
                         &client,
                         &ruleset,
                         resolver.as_ref(),
                         db_conn,
-                        scan_pb,
+                        tasks_completed,
                         matches_found,
-                    )
-                    .await?;
+                    ).await;
                     
-                    domain_pb.inc(1);
-                    Ok::<_, anyhow::Error>(())
+                    // Always increment domain counter
+                    domains_processed.fetch_add(1, Ordering::Relaxed);
+                    
+                    result
                 }
             })
             .buffer_unordered(config.concurrency);
@@ -136,19 +153,18 @@ pub async fn run_scan(config: ScanConfig) -> Result<()> {
         }).await;
     }
     
-    // Finish progress bars
-    domain_pb.finish_with_message("All domains processed");
-    scan_pb.finish_with_message("All scan tasks completed");
+    // Cancel the status update task once all work is done
+    status_handle.abort();
     
     // Calculate stats
     let elapsed = start_time.elapsed();
     let elapsed_secs = elapsed.as_secs_f64();
-    let matches = *matches_found.lock().await;
+    let matches = matches_found.load(Ordering::Relaxed);
     
     // Log stats
     logger::log_scan_stats(
-        domain_chunks.iter().map(|chunk| chunk.len()).sum::<usize>(),
-        domain_chunks.iter().map(|chunk| chunk.len()).sum::<usize>() * ruleset.rules.len(),
+        total_domains,
+        total_tasks,
         matches,
         elapsed_secs,
     );
@@ -163,105 +179,82 @@ async fn scan_domain(
     ruleset: &RuleSet,
     resolver: &DnsResolver,
     db_conn: Arc<Mutex<Connection>>,
-    scan_pb: ProgressBar,
-    matches_found: Arc<Mutex<usize>>,
+    tasks_completed: Arc<AtomicUsize>,
+    matches_found: Arc<AtomicUsize>,
 ) -> Result<()> {
     // Resolve domain to IP
-    let ip_opt = resolver.resolve(domain).await?;
-    
-    if ip_opt.is_none() {
-        // Domain doesn't resolve, skip
-        debug!("🔍 Domain doesn't resolve: {}", domain);
-        scan_pb.inc(ruleset.rules.len() as u64);
-        return Ok(());
-    }
-    
-    // Scan each rule for this domain
-    for rule in &ruleset.rules {
-        scan_rule(
-            domain,
-            rule,
-            client,
-            db_conn.clone(),
-            matches_found.clone(),
-        )
-        .await?;
-        
-        scan_pb.inc(1);
-    }
-    
-    Ok(())
-}
-
-/// Check a single domain against a single rule
-async fn scan_rule(
-    domain: &str,
-    rule: &Rule,
-    client: &Client,
-    db_conn: Arc<Mutex<Connection>>,
-    matches_found: Arc<Mutex<usize>>,
-) -> Result<()> {
-    // Build the URL
-    let url = utils::build_url(domain, &rule.path);
-    
-    // Make request
-    match client.get(&url).send().await {
-        Ok(response) => {
-            let status = response.status();
+    match resolver.resolve(domain).await {
+        Ok(ip) => {
+            debug!("🔍 Scanning domain: {} ({})", domain, ip.unwrap_or_else(|| "unresolved".to_string()));
             
-            // Only process successful responses or redirection responses
-            if status.is_success() || status.is_redirection() {
-                // Get response body
-                match response.text().await {
-                    Ok(body) => {
-                        // Check if response matches rule signature
-                        let detected = body.contains(&rule.signature);
-                        
-                        if detected {
-                            // Found a match!
-                            *matches_found.lock().await += 1;
-                            
-                            // Log the finding
+            // Check each rule
+            for rule in &ruleset.rules {
+                // Construct target URL from rule path
+                let url = format!("http://{}{}", domain, rule.path);
+                
+                // Check if path exists
+                match check_path(client, &url).await {
+                    Ok(true) => {
+                        // Check if it matches the signature
+                        if check_signature(client, &url, &rule.signature).await? {
+                            info!("🔴 Match found: {} - {} ({})", domain, rule.name, rule.path);
                             logger::log_success(domain, &rule.name, &rule.path);
                             
                             // Store in database
-                            let conn = db_conn.lock().await;
+                            let mut conn = db_conn.lock().await;
                             db::insert_finding(&conn, domain, &rule.name, &rule.path, true)?;
+                            
+                            // Increment match counter
+                            matches_found.fetch_add(1, Ordering::Relaxed);
                         } else {
                             // No match, but path exists
-                            let conn = db_conn.lock().await;
+                            let mut conn = db_conn.lock().await;
                             db::insert_finding(&conn, domain, &rule.name, &rule.path, false)?;
                         }
                     }
+                    Ok(false) => {
+                        // Path doesn't exist, nothing to do
+                        debug!("❌ Path not found: {} - {}", domain, rule.path);
+                    }
                     Err(e) => {
-                        debug!("❌ Failed to get response body for {}{}: {}", domain, rule.path, e);
+                        debug!("🔶 Error checking path: {} - {}: {}", domain, rule.path, e);
                     }
                 }
-            } else if status == StatusCode::TOO_MANY_REQUESTS {
-                // Rate limited, back off
-                debug!("⚠️ Rate limited for {}, backing off", domain);
-                utils::random_backoff(1000, 5000).await;
+                
+                // Increment task counter
+                tasks_completed.fetch_add(1, Ordering::Relaxed);
             }
+            
+            Ok(())
         }
         Err(e) => {
-            // Request failed
-            debug!("❌ Request failed for {}{}: {}", domain, rule.path, e);
+            debug!("❌ Failed to resolve domain: {}: {}", domain, e);
+            
+            // Increment task counter for all rules that would have been checked
+            tasks_completed.fetch_add(ruleset.rules.len(), Ordering::Relaxed);
+            
+            Err(anyhow::anyhow!("Failed to resolve domain: {}", domain))
         }
     }
-    
-    Ok(())
 }
 
-/// Check for a security issue, returning true if found
-async fn check_security_issue(
-    domain: &str,
-    path: &str,
-    signature: &str,
-    client: &Client,
-) -> Result<bool> {
-    let url = utils::build_url(domain, path);
-    
-    match client.get(&url).send().await {
+/// Check if a path exists
+async fn check_path(client: &Client, url: &str) -> Result<bool> {
+    match client.get(url).send().await {
+        Ok(response) => {
+            // Check if the response is successful
+            if response.status().is_success() {
+                return Ok(true);
+            }
+            Ok(false)
+        }
+        Err(_) => Ok(false),
+    }
+}
+
+/// Check if a path matches a signature
+async fn check_signature(client: &Client, url: &str, signature: &str) -> Result<bool> {
+    match client.get(url).send().await {
         Ok(response) => {
             // Check if the response is successful
             if response.status().is_success() {

@@ -1,5 +1,4 @@
 use anyhow::Result;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::sync::Arc;
@@ -12,26 +11,7 @@ use rand::prelude::*;
 
 /// Read domains from a file, one domain per line
 pub fn read_domains(file_path: &str) -> Result<Vec<String>> {
-    let file = File::open(file_path)?;
-    let reader = BufReader::new(file);
-    
-    let mut domains = Vec::new();
-    let mut line_count = 0;
-    
-    for line in reader.lines() {
-        line_count += 1;
-        let line = line?;
-        let domain = line.trim();
-        
-        if !domain.is_empty() && !domain.starts_with('#') {
-            domains.push(normalize_domain(domain));
-        }
-    }
-    
-    info!("📋 Read {} domains from {}", domains.len(), file_path);
-    debug!("  Total lines: {}, valid domains: {}", line_count, domains.len());
-    
-    Ok(domains)
+    read_lines(file_path)
 }
 
 /// Normalize a domain name
@@ -57,19 +37,6 @@ pub fn normalize_domain(domain: &str) -> String {
     let domain = domain.trim().to_lowercase();
     
     domain.to_string()
-}
-
-/// Create a fancy progress bar for batch processing
-pub fn create_progress_bar(total: u64, msg: &str, multi_pb: &MultiProgress) -> ProgressBar {
-    let pb = multi_pb.add(ProgressBar::new(total));
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg} ({eta})")
-            .unwrap()
-            .progress_chars("#>-"),
-    );
-    pb.set_message(msg.to_string());
-    pb
 }
 
 /// Build a URL from a domain and path
@@ -125,7 +92,7 @@ pub async fn random_backoff(min_ms: u64, max_ms: u64) {
 }
 
 /// Process a batch of items with bounded concurrency
-pub async fn process_batch<T, F, Fut>(items: Vec<T>, concurrency: usize, process_fn: F) -> Vec<Fut::Output>
+pub async fn process_batch<T, F, Fut>(items: Vec<T>, concurrency: usize, process_fn: F) -> Result<Vec<Fut::Output>>
 where
     T: Send + 'static,
     F: Fn(T) -> Fut + Send + Sync + 'static,
@@ -161,5 +128,29 @@ where
     let elapsed = start.elapsed();
     debug!("Batch processing completed in {:?}", elapsed);
     
-    results
+    Ok(results)
+}
+
+/// Read lines from a file
+pub fn read_lines(file_path: &str) -> Result<Vec<String>> {
+    let file = File::open(file_path)?;
+    let reader = BufReader::new(file);
+    
+    let mut lines = Vec::new();
+    let mut line_count = 0;
+    
+    for line in reader.lines() {
+        line_count += 1;
+        let line = line?;
+        let line = line.trim();
+        
+        if !line.is_empty() && !line.starts_with('#') {
+            lines.push(line.to_string());
+        }
+    }
+    
+    info!("📋 Read {} lines from {}", lines.len(), file_path);
+    debug!("  Total lines: {}, valid lines: {}", line_count, lines.len());
+    
+    Ok(lines)
 }
