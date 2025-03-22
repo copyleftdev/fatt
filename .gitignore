@@ -1,1 +1,53 @@
-/target
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+Cargo.lock
+
+# FATT specific files
+/cache/
+/db/
+results.sqlite
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Debug and logs
+*.log
+debug/
+callgrind.out*
+perf.data*
+.gdb_history
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependencies
+/.cargo/
+/vendor/
+
+# Output directories
+/dist/
+/out/
+
+# Temporary files
+/tmp/
+.tmp/
