@@ -1,0 +1,80 @@
+rules:
+  # REST API Endpoints
+  - name: "api_v1"
+    path: "/api/v1"
+    signature: "API"
+    description: "Common REST API endpoint (v1)"
+    severity: "info"
+  
+  - name: "api_v2"
+    path: "/api/v2"
+    signature: "API"
+    description: "Common REST API endpoint (v2)"
+    severity: "info"
+    
+  - name: "api_latest"
+    path: "/api/latest"
+    signature: "API"
+    description: "Latest version API endpoint"
+    severity: "info"
+    
+  - name: "rest_api"
+    path: "/rest"
+    signature: "API"
+    description: "REST API endpoint"
+    severity: "info"
+    
+  - name: "api_internal"
+    path: "/api/internal"
+    signature: "Internal API"
+    description: "Internal API endpoint that should not be public"
+    severity: "high"
+    
+  - name: "api_private"
+    path: "/api/private"
+    signature: "Private API"
+    description: "Private API endpoint that should be restricted"
+    severity: "high"
+    
+  - name: "api_admin"
+    path: "/api/admin"
+    signature: "Admin API"
+    description: "Administrative API endpoint"
+    severity: "high"
+
+  # API Documentation
+  - name: "swagger_ui"
+    path: "/swagger-ui"
+    signature: "API Documentation"
+    description: "Swagger UI API documentation"
+    severity: "medium"
+    
+  - name: "swagger_json"
+    path: "/swagger.json"
+    signature: "API Schema"
+    description: "Swagger JSON API schema"
+    severity: "medium"
+    
+  - name: "openapi_json"
+    path: "/openapi.json"
+    signature: "API Schema"
+    description: "OpenAPI JSON schema"
+    severity: "medium"
+    
+  - name: "api_docs"
+    path: "/api-docs"
+    signature: "API Documentation"
+    description: "API documentation"
+    severity: "medium"
+    
+  - name: "raml_docs"
+    path: "/raml"
+    signature: "RAML Documentation"
+    description: "RAML API documentation"
+    severity: "medium"
+    
+  - name: "postman_collection"
+    path: "/postman-collection.json"
+    signature: "API Collection"
+    description: "Exposed Postman collection"
+    severity: "medium"

@@ -1,0 +1,80 @@
+rules:
+  # Standard GraphQL Endpoints
+  - name: "graphql_endpoint"
+    path: "/graphql"
+    signature: "GraphQL"
+    description: "Standard GraphQL endpoint"
+    severity: "info"
+    
+  - name: "graphql_api"
+    path: "/api/graphql"
+    signature: "GraphQL API"
+    description: "GraphQL API endpoint"
+    severity: "info"
+    
+  - name: "gql_endpoint"
+    path: "/gql"
+    signature: "GraphQL"
+    description: "Shortened GraphQL endpoint"
+    severity: "info"
+    
+  - name: "graphql_v1"
+    path: "/graphql/v1"
+    signature: "GraphQL"
+    description: "GraphQL v1 endpoint"
+    severity: "info"
+    
+  - name: "graphql_subscriptions"
+    path: "/subscriptions"
+    signature: "GraphQL"
+    description: "GraphQL subscriptions endpoint"
+    severity: "info"
+    
+  - name: "apollo_graphql"
+    path: "/apollo"
+    signature: "Apollo"
+    description: "Apollo GraphQL server"
+    severity: "info"
+
+  # GraphQL Development Tools
+  - name: "graphql_playground"
+    path: "/graphql/playground"
+    signature: "GraphQL Playground"
+    description: "GraphQL Playground development tool"
+    severity: "high"
+    
+  - name: "graphql_explorer"
+    path: "/graphql/explorer"
+    signature: "GraphQL Explorer"
+    description: "GraphQL Explorer interface"
+    severity: "high"
+    
+  - name: "graphiql"
+    path: "/graphiql"
+    signature: "GraphiQL"
+    description: "GraphiQL interactive console"
+    severity: "high"
+    
+  - name: "graphql_playground_html"
+    path: "/playground"
+    signature: "GraphQL Playground"
+    description: "GraphQL Playground HTML interface"
+    severity: "high"
+    
+  - name: "graphql_ide"
+    path: "/graphql-ide"
+    signature: "GraphQL IDE"
+    description: "GraphQL IDE development tool"
+    severity: "high"
+    
+  - name: "altair_graphql"
+    path: "/altair"
+    signature: "Altair GraphQL"
+    description: "Altair GraphQL client interface"
+    severity: "high"
+    
+  - name: "graphql_introspection"
+    path: "/graphql?query={__schema{types{name,fields{name}}}}"
+    signature: "GraphQL Introspection"
+    description: "GraphQL introspection query endpoint"
+    severity: "critical"

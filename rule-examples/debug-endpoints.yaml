@@ -1,0 +1,111 @@
+rules:
+  # Debug Information Endpoints
+  - name: "phpinfo"
+    path: "/phpinfo.php"
+    signature: "PHP"
+    description: "PHP information disclosure"
+    severity: "critical"
+    
+  - name: "info_php"
+    path: "/info.php"
+    signature: "PHP"
+    description: "PHP information page"
+    severity: "critical"
+    
+  - name: "test_php"
+    path: "/test.php"
+    signature: "PHP"
+    description: "PHP test page"
+    severity: "high"
+    
+  - name: "debug_endpoint"
+    path: "/debug"
+    signature: "Debug"
+    description: "Debug endpoint"
+    severity: "critical"
+    
+  - name: "debug_info"
+    path: "/debug/info"
+    signature: "Debug Info"
+    description: "Debug information endpoint"
+    severity: "critical"
+    
+  - name: "debug_vars"
+    path: "/debug/vars"
+    signature: "Debug Variables"
+    description: "Debug variables endpoint"
+    severity: "critical"
+
+  # Application Monitoring Endpoints
+  - name: "actuator_endpoints"
+    path: "/actuator"
+    signature: "Spring"
+    description: "Spring Boot Actuator endpoints"
+    severity: "high"
+    
+  - name: "metrics_endpoint"
+    path: "/metrics"
+    signature: "Metrics"
+    description: "Application metrics endpoint"
+    severity: "medium"
+    
+  - name: "health_endpoint"
+    path: "/health"
+    signature: "Health"
+    description: "Application health check endpoint"
+    severity: "low"
+    
+  - name: "status_endpoint"
+    path: "/status"
+    signature: "Status"
+    description: "Application status endpoint"
+    severity: "low"
+    
+  - name: "prometheus"
+    path: "/prometheus"
+    signature: "Prometheus"
+    description: "Prometheus metrics endpoint"
+    severity: "medium"
+    
+  - name: "trace_endpoint"
+    path: "/trace"
+    signature: "Trace"
+    description: "Request tracing endpoint"
+    severity: "high"
+
+  # Development Endpoints
+  - name: "dev_endpoint"
+    path: "/dev"
+    signature: "Development"
+    description: "Development endpoint"
+    severity: "high"
+    
+  - name: "test_endpoint"
+    path: "/test"
+    signature: "Test"
+    description: "Test endpoint"
+    severity: "medium"
+    
+  - name: "staging_endpoint"
+    path: "/staging"
+    signature: "Staging"
+    description: "Staging environment"
+    severity: "medium"
+    
+  - name: "beta_endpoint"
+    path: "/beta"
+    signature: "Beta"
+    description: "Beta features endpoint"
+    severity: "medium"
+    
+  - name: "console_endpoint"
+    path: "/console"
+    signature: "Console"
+    description: "Development console"
+    severity: "high"
+    
+  - name: "shell_endpoint"
+    path: "/shell"
+    signature: "Shell"
+    description: "Web shell access"
+    severity: "critical"

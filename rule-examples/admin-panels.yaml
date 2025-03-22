@@ -1,0 +1,111 @@
+rules:
+  # Common Admin Panels
+  - name: "admin_panel"
+    path: "/admin"
+    signature: "Admin Panel"
+    description: "Default admin panel path"
+    severity: "medium"
+    
+  - name: "administrator"
+    path: "/administrator"
+    signature: "Admin Console"
+    description: "Default administrator console"
+    severity: "medium"
+    
+  - name: "admin_dashboard"
+    path: "/admin/dashboard"
+    signature: "Admin Dashboard"
+    description: "Administrative dashboard"
+    severity: "medium"
+    
+  - name: "manage"
+    path: "/manage"
+    signature: "Management"
+    description: "Management interface"
+    severity: "medium"
+    
+  - name: "management_console"
+    path: "/management"
+    signature: "Management Console"
+    description: "Management console"
+    severity: "medium"
+    
+  - name: "control_panel"
+    path: "/control"
+    signature: "Control Panel"
+    description: "Control panel interface"
+    severity: "medium"
+
+  # CMS Admin Panels
+  - name: "wp_admin"
+    path: "/wp-admin"
+    signature: "WordPress"
+    description: "WordPress admin panel"
+    severity: "medium"
+    
+  - name: "joomla_admin"
+    path: "/administrator"
+    signature: "Joomla"
+    description: "Joomla administrator panel"
+    severity: "medium"
+    
+  - name: "drupal_admin"
+    path: "/admin/content"
+    signature: "Drupal"
+    description: "Drupal admin content"
+    severity: "medium"
+    
+  - name: "typo3_admin"
+    path: "/typo3"
+    signature: "TYPO3"
+    description: "TYPO3 backend"
+    severity: "medium"
+    
+  - name: "magento_admin"
+    path: "/admin_xxxxx"
+    signature: "Magento"
+    description: "Magento admin panel (with placeholder)"
+    severity: "medium"
+    
+  - name: "ghost_admin"
+    path: "/ghost"
+    signature: "Ghost"
+    description: "Ghost CMS admin panel"
+    severity: "medium"
+
+  # Server Control Panels
+  - name: "phpmyadmin"
+    path: "/phpmyadmin"
+    signature: "phpMyAdmin"
+    description: "phpMyAdmin database management tool"
+    severity: "high"
+    
+  - name: "cpanel"
+    path: "/cpanel"
+    signature: "cPanel"
+    description: "cPanel hosting control panel"
+    severity: "high"
+    
+  - name: "webmin"
+    path: "/webmin"
+    signature: "Webmin"
+    description: "Webmin server administration panel"
+    severity: "high"
+    
+  - name: "plesk"
+    path: "/plesk"
+    signature: "Plesk"
+    description: "Plesk control panel"
+    severity: "high"
+    
+  - name: "directadmin"
+    path: "/directadmin"
+    signature: "DirectAdmin"
+    description: "DirectAdmin control panel"
+    severity: "high"
+    
+  - name: "virtualmin"
+    path: "/virtualmin"
+    signature: "Virtualmin"
+    description: "Virtualmin control panel"
+    severity: "high"

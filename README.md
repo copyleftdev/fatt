@@ -57,6 +57,33 @@ rules:
     signature: "APP_KEY="
 ```
 
+## Rule Examples
+
+FATT includes a comprehensive set of rule examples in the `rule-examples` directory, organized by technology:
+
+- **admin-panels.yaml** - Common admin interfaces and control panels
+- **api-endpoints.yaml** - REST API endpoints and documentation resources
+- **cloud-service-paths.yaml** - AWS, GCP, Azure, and Kubernetes paths
+- **common-paths.yaml** - Comprehensive collection of various path types
+- **dangerous-defaults.yaml** - Exposed configs and sensitive files
+- **database-paths.yaml** - SQL and NoSQL database management interfaces
+- **debug-endpoints.yaml** - Debug, monitoring, and development endpoints
+- **ecommerce-webapp-paths.yaml** - eCommerce platforms and web frameworks
+- **graphql-endpoints.yaml** - GraphQL endpoints and development tools
+- **iot-embedded-paths.yaml** - IoT devices, routers, cameras, and ICS systems
+- **java-spring-paths.yaml** - Spring Boot actuators and Java web applications
+- **microsoft-paths.yaml** - Microsoft Exchange, SharePoint, and Azure paths
+
+Load specific rule sets for targeted scanning:
+
+```rust
+// Use a single category
+let rules = rules::load_rules("rule-examples/microsoft-paths.yaml").unwrap();
+
+// Or add rules to your main ruleset
+rules::add_rule("rule-examples/database-paths.yaml").unwrap();
+```
+
 ## Usage
 
 ```

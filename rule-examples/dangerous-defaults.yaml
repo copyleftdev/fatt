@@ -1,0 +1,111 @@
+rules:
+  # Exposed Configuration Files
+  - name: "git_config"
+    path: "/.git/config"
+    signature: "Git"
+    description: "Exposed Git configuration"
+    severity: "critical"
+    
+  - name: "git_directory"
+    path: "/.git/"
+    signature: "Git"
+    description: "Exposed Git directory"
+    severity: "critical"
+    
+  - name: "env_file"
+    path: "/.env"
+    signature: "Environment"
+    description: "Exposed environment file with potential secrets"
+    severity: "critical"
+    
+  - name: "docker_compose"
+    path: "/docker-compose.yml"
+    signature: "Docker"
+    description: "Exposed Docker Compose file"
+    severity: "critical"
+    
+  - name: "env_production"
+    path: "/.env.production"
+    signature: "Environment"
+    description: "Exposed production environment file"
+    severity: "critical"
+    
+  - name: "env_development"
+    path: "/.env.development"
+    signature: "Environment"
+    description: "Exposed development environment file"
+    severity: "critical"
+    
+  - name: "config_json"
+    path: "/config.json"
+    signature: "Config"
+    description: "Exposed configuration file"
+    severity: "high"
+    
+  - name: "aws_credentials"
+    path: "/.aws/credentials"
+    signature: "AWS"
+    description: "Exposed AWS credentials"
+    severity: "critical"
+    
+  - name: "ssh_key"
+    path: "/.ssh/id_rsa"
+    signature: "SSH"
+    description: "Exposed SSH private key"
+    severity: "critical"
+
+  # Exposed Directories
+  - name: "backup_files"
+    path: "/backup"
+    signature: "Backup"
+    description: "Exposed backup files"
+    severity: "high"
+    
+  - name: "logs_directory"
+    path: "/logs"
+    signature: "Logs"
+    description: "Exposed log files"
+    severity: "high"
+    
+  - name: "secrets_directory"
+    path: "/secrets"
+    signature: "Secrets"
+    description: "Exposed secrets directory"
+    severity: "critical"
+    
+  - name: "keys_directory"
+    path: "/keys"
+    signature: "Keys"
+    description: "Exposed keys directory"
+    severity: "critical"
+    
+  - name: "db_dump"
+    path: "/db-dump"
+    signature: "Database"
+    description: "Exposed database dump"
+    severity: "critical"
+    
+  - name: "creds_directory"
+    path: "/credentials"
+    signature: "Credentials"
+    description: "Exposed credentials directory"
+    severity: "critical"
+    
+  # Development Artifacts
+  - name: "node_modules"
+    path: "/node_modules"
+    signature: "Node.js"
+    description: "Exposed Node.js modules directory"
+    severity: "medium"
+    
+  - name: "vendor_directory"
+    path: "/vendor"
+    signature: "Dependencies"
+    description: "Exposed vendor dependencies directory"
+    severity: "medium"
+    
+  - name: "tmp_directory"
+    path: "/tmp"
+    signature: "Temporary"
+    description: "Exposed temporary directory"
+    severity: "medium"
