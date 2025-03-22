@@ -52,3 +52,5 @@ perf.data*
 /tmp/
 .tmp/
 cache/dns_cache/db
+cache/dns_cache/db
+results.sqlite
