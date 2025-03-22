@@ -1,25 +1,24 @@
 use anyhow::Result;
 use std::path::Path;
-use tracing;
 
 /// Configuration for scanning
 #[derive(Debug, Clone)]
 pub struct ScanConfig {
     /// Path to input file with domains, one per line
     pub input_file: String,
-    
+
     /// Path to rules file
     pub rules_file: String,
-    
+
     /// Number of concurrent scanners
     pub concurrency: usize,
-    
+
     /// Verbosity level: 0=error, 1=warn, 2=info, 3=debug, 4=trace
     pub verbosity: u8,
-    
+
     /// Whether to use distributed mode
     pub distributed: bool,
-    
+
     /// Path to output file
     pub output_file: Option<String>,
 
@@ -71,6 +70,7 @@ impl Default for ScanConfig {
 
 impl ScanConfig {
     /// Create a new scan configuration with default values
+    #[allow(dead_code)]
     pub fn new(input_file: String, rules_file: String) -> Self {
         Self {
             input_file,
@@ -89,35 +89,32 @@ impl ScanConfig {
             verbose: false,
         }
     }
-    
+
     /// Validate the configuration
     pub fn validate(&self) -> Result<()> {
         // Check if input file exists
         if !Path::new(&self.input_file).exists() {
             anyhow::bail!("input file does not exist: {}", self.input_file);
         }
-        
+
         // Check if rules file exists
         if !Path::new(&self.rules_file).exists() {
             anyhow::bail!("Rules file does not exist: {}", self.rules_file);
         }
-        
+
         // Check concurrency value
         if self.concurrency == 0 {
             anyhow::bail!("Invalid concurrency value: must be greater than 0");
         }
-        
+
         Ok(())
     }
-    
+
     /// Log the configuration
     pub fn log_config(&self) {
         // Use event-based tracing which is more reliably captured by test infrastructure
-        tracing::event!(
-            tracing::Level::INFO,
-            message = "Configuration:"
-        );
-        
+        tracing::event!(tracing::Level::INFO, message = "Configuration:");
+
         // Log each configuration value as a separate event for better test capturing
         tracing::event!(
             tracing::Level::INFO,
@@ -189,7 +186,7 @@ impl ScanConfig {
             verbose = self.verbose,
             message = format!("  verbose: {}", self.verbose)
         );
-        
+
         tracing::event!(
             tracing::Level::DEBUG,
             message = "Configuration validated successfully"

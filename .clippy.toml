@@ -1,0 +1,4 @@
+# Allow code that would be automatically fixed by rustfmt
+cognitive-complexity-threshold = 25
+too-many-arguments-threshold = 7
+disallowed-methods = []

@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use reqwest::Client;
 use rusqlite::Connection;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 use tracing::{debug, error, info, warn};
@@ -18,7 +18,7 @@ use crate::utils;
 pub fn create_http_client(timeout_secs: u64, connect_timeout_secs: u64) -> Result<Client> {
     let timeout = Duration::from_secs(timeout_secs);
     let connect_timeout = Duration::from_secs(connect_timeout_secs);
-    
+
     // Create a connection pool using reqwest's connection manager
     let client = Client::builder()
         .timeout(timeout)
@@ -32,9 +32,9 @@ pub fn create_http_client(timeout_secs: u64, connect_timeout_secs: u64) -> Resul
         .redirect(reqwest::redirect::Policy::limited(3)) // Limit redirects
         .build()
         .context("Failed to build HTTP client")?;
-    
+
     debug!("📡 Created optimized HTTP client");
-    
+
     Ok(client)
 }
 
@@ -43,66 +43,65 @@ pub async fn run_scan(config: ScanConfig) -> Result<()> {
     // Validate configuration
     config.validate()?;
     config.log_config();
-    
+
     let start_time = Instant::now();
-    
+
     // Load rules
-    let ruleset = crate::rules::load_rules(&config.rules_file)
-        .context("Failed to load rules")?;
-    
+    let ruleset = crate::rules::load_rules(&config.rules_file).context("Failed to load rules")?;
+
     if ruleset.rules.is_empty() {
         warn!("⚠️ No rules loaded from {}", config.rules_file);
         return Ok(());
     }
-    
+
     // Initialize database
     let db_conn = Arc::new(Mutex::new(
         db::init_db(&config.db_path).context("Failed to initialize database")?,
     ));
-    
+
     // Initialize DNS resolver
     let resolver = Arc::new(
         DnsResolver::new("cache", config.dns_cache_size)
             .await
             .context("Failed to initialize DNS resolver")?,
     );
-    
+
     // Load domains
-    let domains = utils::read_domains(&config.input_file)
-        .context("Failed to read domains")?;
-    
+    let domains = utils::read_domains(&config.input_file).context("Failed to read domains")?;
+
     if domains.is_empty() {
         warn!("⚠️ No domains loaded from {}", config.input_file);
         return Ok(());
     }
-    
+
     // Create high-performance HTTP client
     let client = create_http_client(config.http_timeout, config.connect_timeout)?;
-    
+
     // Counter for matches found
     let matches_found = Arc::new(AtomicUsize::new(0));
     let domains_processed = Arc::new(AtomicUsize::new(0));
     let tasks_completed = Arc::new(AtomicUsize::new(0));
-    
+
     // Chunk domains for batch processing
     let batch_size = 100; // Default batch size if not specified
     let domain_chunks = utils::chunk_vector(domains, batch_size);
     let total_domains = domain_chunks.iter().map(|chunk| chunk.len()).sum::<usize>();
     let total_tasks = total_domains * ruleset.rules.len();
-    
-    info!("🚀 Starting scan of {} domains with {} rules ({} total checks)", 
+
+    info!(
+        "🚀 Starting scan of {} domains with {} rules ({} total checks)",
         total_domains,
-        ruleset.rules.len(), 
+        ruleset.rules.len(),
         total_tasks
     );
-    
+
     // Status update task
     let status_interval = Duration::from_secs(3);
     let domains_processed_clone = domains_processed.clone();
     let tasks_completed_clone = tasks_completed.clone();
     let total_domains_clone = total_domains;
     let total_tasks_clone = total_tasks;
-    
+
     // Spawn status update task
     let status_handle = tokio::spawn(async move {
         let mut interval = tokio::time::interval(status_interval);
@@ -110,24 +109,35 @@ pub async fn run_scan(config: ScanConfig) -> Result<()> {
             interval.tick().await;
             let domains_done = domains_processed_clone.load(Ordering::Relaxed);
             let tasks_done = tasks_completed_clone.load(Ordering::Relaxed);
-            let domains_percent = (domains_done as f64 / total_domains_clone as f64 * 100.0) as usize;
+            let domains_percent =
+                (domains_done as f64 / total_domains_clone as f64 * 100.0) as usize;
             let tasks_percent = (tasks_done as f64 / total_tasks_clone as f64 * 100.0) as usize;
-            
-            info!("📊 Status: {}/{} domains ({}%), {}/{} tasks ({}%)", 
-                domains_done, total_domains_clone, domains_percent,
-                tasks_done, total_tasks_clone, tasks_percent
+
+            info!(
+                "📊 Status: {}/{} domains ({}%), {}/{} tasks ({}%)",
+                domains_done,
+                total_domains_clone,
+                domains_percent,
+                tasks_done,
+                total_tasks_clone,
+                tasks_percent
             );
-            
+
             if domains_done >= total_domains_clone && tasks_done >= total_tasks_clone {
                 break;
             }
         }
     });
-    
+
     // Process domains in batches
     for (i, chunk) in domain_chunks.iter().enumerate() {
-        info!("📦 Processing batch {}/{} ({} domains)", i + 1, domain_chunks.len(), chunk.len());
-        
+        info!(
+            "📦 Processing batch {}/{} ({} domains)",
+            i + 1,
+            domain_chunks.len(),
+            chunk.len()
+        );
+
         // Process each domain in the batch concurrently
         let client_clone = client.clone();
         let ruleset_clone = ruleset.clone();
@@ -136,10 +146,10 @@ pub async fn run_scan(config: ScanConfig) -> Result<()> {
         let tasks_completed_clone = tasks_completed.clone();
         let matches_found_clone = matches_found.clone();
         let domains_processed_clone = domains_processed.clone();
-        
+
         // Create a stream of futures for concurrent processing
         let mut handles = Vec::with_capacity(chunk.len());
-        
+
         // Create tasks for each domain
         for domain in chunk {
             let domain = domain.clone();
@@ -150,7 +160,7 @@ pub async fn run_scan(config: ScanConfig) -> Result<()> {
             let tasks_completed = tasks_completed_clone.clone();
             let matches_found = matches_found_clone.clone();
             let domains_processed = domains_processed_clone.clone();
-            
+
             // Spawn a task for each domain
             let handle = tokio::spawn(async move {
                 let result = scan_domain(
@@ -161,43 +171,42 @@ pub async fn run_scan(config: ScanConfig) -> Result<()> {
                     db_conn,
                     tasks_completed,
                     matches_found,
-                ).await;
-                
+                )
+                .await;
+
                 // Always increment domain counter
                 domains_processed.fetch_add(1, Ordering::Relaxed);
-                
+
                 result
             });
-            
+
             handles.push(handle);
         }
-        
+
         // Wait for all futures to complete
         let results = futures::future::join_all(handles).await;
-        
+
         // Count errors
-        let error_count = results.iter().filter(|r| r.is_err() || r.as_ref().ok().map_or(true, |r| r.is_err())).count();
+        let error_count = results
+            .iter()
+            .filter(|r| r.is_err() || r.as_ref().ok().is_none_or(|r| r.is_err()))
+            .count();
         if error_count > 0 {
             debug!("⚠️ Batch completed with {} errors", error_count);
         }
     }
-    
+
     // Cancel the status update task once all work is done
     status_handle.abort();
-    
+
     // Calculate stats
     let elapsed = start_time.elapsed();
     let elapsed_secs = elapsed.as_secs_f64();
     let matches = matches_found.load(Ordering::Relaxed);
-    
+
     // Log stats
-    logger::log_scan_stats(
-        total_domains,
-        total_tasks,
-        matches,
-        elapsed_secs,
-    );
-    
+    logger::log_scan_stats(total_domains, total_tasks, matches, elapsed_secs);
+
     Ok(())
 }
 
@@ -214,11 +223,15 @@ pub async fn scan_domain(
     // Resolve domain to IP
     match resolver.lookup(domain).await {
         Ok(ip) => {
-            debug!("🔍 Scanning domain: {} ({})", domain, ip.unwrap_or_else(|| "unresolved".to_string()));
-            
+            debug!(
+                "🔍 Scanning domain: {} ({})",
+                domain,
+                ip.unwrap_or_else(|| "unresolved".to_string())
+            );
+
             // Create a vector of futures for parallel rule checking
             let mut rule_futures = Vec::with_capacity(ruleset.rules.len());
-            
+
             // Process each rule in parallel
             for rule in &ruleset.rules {
                 let domain = domain.to_string();
@@ -226,82 +239,96 @@ pub async fn scan_domain(
                 let rule = rule.clone();
                 let db_conn = db_conn.clone();
                 let matches_found = matches_found.clone();
-                
+
                 // Create a future for this rule check
                 let rule_future = async move {
                     // Construct target URL from rule path
                     let url = format!("http://{}{}", domain, rule.path);
-                    
+
                     // Check if path exists
                     match check_path(&client, &url).await {
                         Ok(true) => {
                             // Check if it matches the signature
                             match check_signature(&client, &url, &rule.signature).await {
                                 Ok(true) => {
-                                    info!("🔴 Match found: {} - {} ({})", domain, rule.name, rule.path);
+                                    info!(
+                                        "🔴 Match found: {} - {} ({})",
+                                        domain, rule.name, rule.path
+                                    );
                                     logger::log_success(&domain, &rule.name, &rule.path);
-                                    
+
                                     // Store in database
                                     let conn = db_conn.lock().await;
-                                    if let Err(e) = db::insert_finding(&conn, &domain, &rule.name, &rule.path, true) {
+                                    if let Err(e) = db::insert_finding(
+                                        &conn, &domain, &rule.name, &rule.path, true,
+                                    ) {
                                         error!("Failed to insert finding: {}", e);
                                     }
-                                    
+
                                     // Increment match counter
                                     matches_found.fetch_add(1, Ordering::Relaxed);
-                                    
+
                                     Ok(())
-                                },
+                                }
                                 Ok(false) => {
                                     // No match, but path exists
                                     let conn = db_conn.lock().await;
-                                    if let Err(e) = db::insert_finding(&conn, &domain, &rule.name, &rule.path, false) {
+                                    if let Err(e) = db::insert_finding(
+                                        &conn, &domain, &rule.name, &rule.path, false,
+                                    ) {
                                         error!("Failed to insert finding: {}", e);
                                     }
-                                    
+
                                     Ok(())
-                                },
+                                }
                                 Err(e) => {
-                                    debug!("🔶 Error checking signature for {} - {}: {}", domain, rule.path, e);
+                                    debug!(
+                                        "🔶 Error checking signature for {} - {}: {}",
+                                        domain, rule.path, e
+                                    );
                                     Err(e)
                                 }
                             }
-                        },
+                        }
                         Ok(false) => {
                             // Path doesn't exist, nothing to do
                             debug!("❌ Path not found: {} - {}", domain, rule.path);
                             Ok(())
-                        },
+                        }
                         Err(e) => {
                             debug!("🔶 Error checking path: {} - {}: {}", domain, rule.path, e);
                             Err(e)
                         }
                     }
                 };
-                
+
                 rule_futures.push(rule_future);
             }
-            
+
             // Execute all rule checks in parallel with a concurrency limit
             let results = futures::future::join_all(rule_futures).await;
-            
+
             // Increment task counter for all completed tasks
             tasks_completed.fetch_add(ruleset.rules.len(), Ordering::Relaxed);
-            
+
             // Check if any errors occurred
             let errors: Vec<_> = results.into_iter().filter_map(|r| r.err()).collect();
             if !errors.is_empty() {
-                debug!("❌ Some rule checks failed for {}: {} errors", domain, errors.len());
+                debug!(
+                    "❌ Some rule checks failed for {}: {} errors",
+                    domain,
+                    errors.len()
+                );
             }
-            
+
             Ok(())
         }
         Err(e) => {
             debug!("❌ Failed to resolve domain: {}: {}", domain, e);
-            
+
             // Increment task counter for all rules that would have been checked
             tasks_completed.fetch_add(ruleset.rules.len(), Ordering::Relaxed);
-            
+
             Err(anyhow::anyhow!("Failed to resolve domain: {}", domain))
         }
     }
@@ -311,18 +338,12 @@ pub async fn scan_domain(
 pub async fn check_path(client: &Client, url: &str) -> Result<bool> {
     // First try a HEAD request to see if the path exists without downloading content
     match client.head(url).send().await {
-        Ok(response) => {
-            // Check if the response is successful
-            return Ok(response.status().is_success());
-        }
+        Ok(response) => Ok(response.status().is_success()),
         Err(e) => {
             debug!("HEAD request failed for {}: {}", url, e);
             // Fall back to a GET if HEAD fails, some servers don't support HEAD
             match client.get(url).send().await {
-                Ok(response) => {
-                    // Check if the response is successful
-                    return Ok(response.status().is_success());
-                }
+                Ok(response) => Ok(response.status().is_success()),
                 Err(e) => {
                     debug!("GET request also failed for {}: {}", url, e);
                     Err(anyhow::anyhow!("Failed to check path: {}", e))
