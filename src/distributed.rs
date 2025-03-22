@@ -172,7 +172,7 @@ pub async fn start_worker(config: &WorkerConfig) -> Result<()> {
         .context(format!("Failed to connect to master at {}", config.master))?;
     
     // Split the stream
-    let (mut read_half, write_half) = stream.into_split();
+    let (mut reader, write_half) = stream.into_split();
     let writer = Arc::new(Mutex::new(write_half));
     
     // Register with master
@@ -195,13 +195,13 @@ pub async fn start_worker(config: &WorkerConfig) -> Result<()> {
     loop {
         // Read message length (4 bytes)
         let mut len_bytes = [0u8; 4];
-        read_half.read_exact(&mut len_bytes).await
+        reader.read_exact(&mut len_bytes).await
             .context("Failed to read message length")?;
         let len = u32::from_be_bytes(len_bytes) as usize;
         
         // Read message
         let mut buffer = vec![0u8; len];
-        read_half.read_exact(&mut buffer).await
+        reader.read_exact(&mut buffer).await
             .context("Failed to read message")?;
         
         // Deserialize message
@@ -281,25 +281,23 @@ async fn read_message(stream: &mut TcpStream) -> Result<WorkerMessage> {
 /// Start a master node for distributed scanning
 pub async fn start_master(
     listen_addr: &str,
-    scan_config: crate::config::ScanConfig,
+    _scan_config: crate::config::ScanConfig,
 ) -> Result<()> {
     info!("🌐 Starting master node on {}", listen_addr);
     
+    // Create our TCP listener
     let listener = TcpListener::bind(listen_addr).await
         .context(format!("Failed to bind to {}", listen_addr))?;
     
-    // Set up shared state
+    info!("✅ Master node started, waiting for workers to connect");
+    
+    // Create a shared list of connected workers
     let workers = Arc::new(Mutex::new(Vec::new()));
     
     loop {
         // Accept connections
-        let (socket, addr) = match listener.accept().await {
-            Ok(connection) => connection,
-            Err(e) => {
-                error!("❌ Failed to accept connection: {}", e);
-                continue;
-            }
-        };
+        let (socket, addr) = listener.accept().await
+            .context("Failed to accept connection")?;
         
         info!("✅ New connection from: {}", addr);
         
@@ -318,7 +316,7 @@ pub async fn start_master(
 /// Handle a worker connection
 async fn handle_worker_connection(
     mut stream: TcpStream,
-    workers: Arc<Mutex<Vec<ConnectedWorker>>>,
+    _workers: Arc<Mutex<Vec<ConnectedWorker>>>,
 ) -> Result<()> {
     info!("🔌 Worker connected from: {}", stream.peer_addr()?);
     
@@ -333,7 +331,7 @@ async fn handle_worker_connection(
             );
             
             // Split the stream and store the write half for sending messages
-            let (read_half, write_half) = stream.into_split();
+            let (_read_half, write_half) = stream.into_split();
             
             // Create the connected worker
             let worker = Arc::new(ConnectedWorker {

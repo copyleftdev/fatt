@@ -304,15 +304,53 @@ fn export_to_csv(findings: &[Finding], output_file: &str) -> Result<()> {
 }
 
 /// Export findings to JSON format
-fn export_to_json(findings: &[Finding], output_file: &str) -> Result<()> {
-    let json = serde_json::to_string_pretty(findings)?;
-    std::fs::write(output_file, json)?;
-    
+pub fn export_to_json(findings: &[Finding], output_file: &str) -> Result<()> {
+    let json = serde_json::to_string_pretty(findings)
+        .context("Failed to serialize findings to JSON")?;
+        
+    std::fs::write(output_file, json)
+        .context("Failed to write JSON to output file")?;
+        
     Ok(())
 }
 
+/// Record a finding in the database (alias for insert_finding with severity)
+pub fn record_finding(
+    conn: &Connection,
+    domain: &str,
+    matched_path: &str, 
+    rule_name: &str,
+    severity: Option<crate::rules::Severity>,
+) -> Result<i64> {
+    // For now, we just call insert_finding and ignore severity
+    // In a future version, we could add a severity column to the findings table
+    insert_finding(conn, domain, rule_name, matched_path, true)
+}
+
+/// Get the total count of findings, optionally filtered by severity
+pub fn get_findings_count(
+    conn: &Connection,
+    severity: Option<crate::rules::Severity>,
+) -> Result<usize> {
+    // For now, we ignore severity since it's not stored in the database
+    let sql = "SELECT COUNT(*) FROM findings";
+    let count: i64 = conn.query_row(sql, [], |row| row.get(0))
+        .context("Failed to get findings count")?;
+        
+    Ok(count as usize)
+}
+
+/// Get the count of unique domains in findings
+pub fn get_unique_domains_count(conn: &Connection) -> Result<usize> {
+    let sql = "SELECT COUNT(DISTINCT domain) FROM findings";
+    let count: i64 = conn.query_row(sql, [], |row| row.get(0))
+        .context("Failed to get unique domains count")?;
+        
+    Ok(count as usize)
+}
+
 /// Helper to truncate a string to max_length with ellipsis if needed
-fn truncate_string(s: &str, max_length: usize) -> String {
+pub fn truncate_string(s: &str, max_length: usize) -> String {
     if s.len() <= max_length {
         s.to_string()
     } else {

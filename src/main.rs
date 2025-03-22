@@ -201,9 +201,9 @@ fn main() -> Result<()> {
                 rules,
                 database,
                 concurrency,
-                batch_size,
+                batch_size: _,
                 timeout,
-                threads,
+                threads: _,
                 verbose,
             } => {
                 logger::set_verbosity(verbose);
@@ -213,6 +213,7 @@ fn main() -> Result<()> {
                     rules_file: rules,
                     concurrency,
                     verbosity: if verbose { 3 } else { 2 }, // 3 for debug, 2 for info
+                    verbose: verbose,
                     distributed: false,
                     output_file: None,
                     db_path: database,
