@@ -109,4 +109,6 @@ FATT is designed for high performance but can be further optimized:
 
 ## License
 
-MIT License 2025 [copyleftdev](https://github.com/copyleftdev)
+This project is licensed under the HACKFU PUBLIC LICENSE (HFPL) - "Don't Be A Noob" Edition. See the [LICENSE](LICENSE) file for details.
+
+ 2025 [copyleftdev](https://github.com/copyleftdev)
