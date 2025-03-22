@@ -29,6 +29,7 @@ impl LogCapture {
     }
 
     /// Get all captured log lines
+    #[allow(dead_code)]
     pub fn logs(&self) -> Vec<String> {
         self.lines.lock().unwrap().clone()
     }

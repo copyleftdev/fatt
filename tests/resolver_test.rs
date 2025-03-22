@@ -1,13 +1,10 @@
 use fatt::resolver::DnsResolver;
-use std::net::IpAddr;
-use std::path::PathBuf;
-use std::str::FromStr;
 use tempfile::tempdir;
 
 #[test]
 fn test_resolver_creation() -> anyhow::Result<()> {
     // Create a temporary directory for DNS cache
-    let temp_dir = tempdir()?;
+    let _temp_dir = tempdir()?;
     // We're using a temporary directory now, no need for cache_path variable
 
     // Test for testing resolver
@@ -15,7 +12,7 @@ fn test_resolver_creation() -> anyhow::Result<()> {
     assert!(resolver.is_test_resolver());
 
     // Clean up
-    temp_dir.close()?;
+    _temp_dir.close()?;
 
     Ok(())
 }
@@ -77,7 +74,7 @@ async fn test_resolver_concurrency() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_resolver_cache() -> anyhow::Result<()> {
     // Create a temporary directory for DNS cache
-    let temp_dir = tempdir()?;
+    let _temp_dir = tempdir()?;
     // We're using a temporary directory now, no need for cache_path variable
 
     // Create resolver with caching

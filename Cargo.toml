@@ -1,6 +1,6 @@
 [package]
 name = "fatt"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["copyleftdev", "FATT Development Team"]
 description = "Find All The Things - A high-performance, distributed security scanning tool"
