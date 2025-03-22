@@ -1,35 +1,51 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::fs::File;
-use std::io::prelude::*;
+use std::io::{BufReader, BufRead, prelude::*};
 use std::path::Path;
 use tracing::{info, debug};
 
 use crate::logger;
 
-/// Severity level for rules
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+/// Severity levels for rules
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
-    Low,
-    Medium,
-    High,
     Critical,
+    High,
+    Medium,
+    Low,
+    Info,
+}
+
+impl Severity {
+    /// Convert severity to a numeric value for ordering
+    pub fn to_value(&self) -> u8 {
+        match self {
+            Severity::Critical => 5,
+            Severity::High => 4,
+            Severity::Medium => 3,
+            Severity::Low => 2,
+            Severity::Info => 1,
+        }
+    }
 }
 
 impl std::fmt::Display for Severity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Severity::Low => write!(f, "low"),
-            Severity::Medium => write!(f, "medium"),
-            Severity::High => write!(f, "high"),
             Severity::Critical => write!(f, "critical"),
+            Severity::High => write!(f, "high"),
+            Severity::Medium => write!(f, "medium"),
+            Severity::Low => write!(f, "low"),
+            Severity::Info => write!(f, "info"),
         }
     }
 }
 
 /// A scanning rule definition
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Rule {
     pub name: String,
     pub path: String,
@@ -40,31 +56,64 @@ pub struct Rule {
     pub severity: Option<Severity>,
 }
 
+impl Rule {
+    /// Create a new rule
+    pub fn new(name: &str, path: &str, signature: &str, description: &str, severity: Severity) -> Self {
+        Self {
+            name: name.to_string(),
+            path: path.to_string(),
+            signature: signature.to_string(),
+            description: Some(description.to_string()),
+            severity: Some(severity),
+        }
+    }
+}
+
 /// Collection of rules from a rules file
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RuleSet {
     pub rules: Vec<Rule>,
 }
 
-/// Load rules from a YAML file
-pub fn load_rules(rules_file: &str) -> Result<RuleSet> {
-    let path = Path::new(rules_file);
-    let mut file = File::open(path).context(format!("Failed to open rules file: {}", rules_file))?;
-    
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .context(format!("Failed to read rules file: {}", rules_file))?;
-    
-    let ruleset: RuleSet = serde_yaml::from_str(&contents)
-        .context(format!("Failed to parse rules file: {}", rules_file))?;
-    
-    info!("📋 Loaded {} rules from {}", ruleset.rules.len(), rules_file);
-    
-    for rule in &ruleset.rules {
-        logger::log_rule_loaded(&rule.name, 1); // Just count the signature as 1 pattern
+impl RuleSet {
+    /// Load rules from a YAML file
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let file = File::open(path.as_ref())
+            .context(format!("Failed to open rules file: {}", path.as_ref().display()))?;
+        
+        let reader = BufReader::new(file);
+        let mut ruleset: RuleSet = serde_yaml::from_reader(reader)
+            .context(format!("Failed to parse rules file: {}", path.as_ref().display()))?;
+        
+        // Sort rules by severity (highest first)
+        ruleset.sort_by_severity();
+        
+        info!("📋 Loaded {} rules from {}", ruleset.rules.len(), path.as_ref().display());
+        
+        for rule in &ruleset.rules {
+            logger::log_rule_loaded(&rule.name, 1); // Just count the signature as 1 pattern
+        }
+        
+        Ok(ruleset)
     }
     
-    Ok(ruleset)
+    /// Sort rules by severity (highest first)
+    pub fn sort_by_severity(&mut self) {
+        self.rules.sort_by(|a, b| {
+            // Use Option::cmp to handle None values
+            match (&a.severity, &b.severity) {
+                (Some(a_sev), Some(b_sev)) => b_sev.cmp(a_sev), // Highest severity first
+                (Some(_), None) => Ordering::Less,
+                (None, Some(_)) => Ordering::Greater,
+                (None, None) => Ordering::Equal,
+            }
+        });
+    }
+}
+
+/// Load rules from a YAML file
+pub fn load_rules(rules_file: &str) -> Result<RuleSet> {
+    RuleSet::from_file(rules_file)
 }
 
 /// Add a new rule to the rules file

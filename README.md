@@ -1,3 +1,5 @@
+![FATT Security Scanner](fatt.png)
+
 # FATT (Find All The Things)
 
 A high-performance, modular, asynchronous, and distributed security scanning CLI tool designed to rapidly identify sensitive or exposed files and directories across millions of domains.
@@ -20,7 +22,7 @@ cargo install fatt
 Or build from source:
 
 ```bash
-git clone https://github.com/username/fatt.git
+git clone https://github.com/copyleftdev/fatt.git
 cd fatt
 cargo build --release
 ```
@@ -80,4 +82,4 @@ FATT is designed for high performance but can be further optimized:
 
 ## License
 
-MIT
+MIT License 2025 [copyleftdev](https://github.com/copyleftdev)

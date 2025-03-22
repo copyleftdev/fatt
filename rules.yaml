@@ -1,83 +1,62 @@
 rules:
   # Version control systems
-  - name: Git Repository
+  - name: Git Repository - HEAD
     path: /.git/HEAD
     signature: "ref: refs/"
     description: "Exposed Git repository can reveal source code and sensitive data"
     severity: high
 
-  - name: Subversion Repository
-    path: /.svn/wc.db
-    signature: "SQLite format 3"
-    description: "Exposed SVN repository can reveal source code and sensitive data"
+  - name: Git Repository - Config
+    path: /.git/config
+    signature: "[core]"
+    description: "Exposed Git configuration may contain repository URLs and credentials"
     severity: high
 
-  # Configuration files
-  - name: Environment Variables
-    path: /.env
-    signature: "="
-    description: "Exposed environment file may contain API keys and credentials"
-    severity: critical
+  - name: Git Repository - Index
+    path: /.git/index
+    signature: "DIRC"
+    description: "Exposed Git index reveals file structure and changes"
+    severity: high
+    
+  - name: Git Repository - Logs
+    path: /.git/logs/HEAD
+    signature: "0000000000000000"
+    description: "Exposed Git logs contain commit history and possibly sensitive comments"
+    severity: high
 
-  - name: AWS Credentials
-    path: /.aws/credentials
-    signature: "aws_access_key_id"
-    description: "Exposed AWS credentials can lead to cloud account compromise"
-    severity: critical
-
-  - name: Docker Compose
-    path: /docker-compose.yml
-    signature: "version:"
-    description: "Docker compose file may reveal infrastructure details and secrets"
+  # API Documentation
+  - name: Swagger UI
+    path: /swagger-ui.html
+    signature: "Swagger UI"
+    description: "Exposed API documentation can reveal endpoint details"
     severity: medium
 
-  # Framework specific files
-  - name: Laravel Debug Mode
-    path: /debug
-    signature: "Laravel"
-    description: "Laravel application in debug mode exposes configuration details"
+  - name: Swagger UI - Alt
+    path: /swagger/index.html
+    signature: "Swagger UI"
+    description: "Exposed API documentation can reveal endpoint details"
     severity: medium
 
-  - name: Rails Database Config
-    path: /config/database.yml
-    signature: "password:"
-    description: "Database configuration may contain credentials"
-    severity: high
-
-  - name: WordPress Config
-    path: /wp-config.php
-    signature: "DB_PASSWORD"
-    description: "WordPress configuration file contains database credentials"
-    severity: high
-
-  # Backend exposures
-  - name: PHPInfo
-    path: /phpinfo.php
-    signature: "<title>phpinfo()</title>"
-    description: "PHPInfo page reveals detailed server configuration"
+  - name: Swagger JSON
+    path: /v2/api-docs
+    signature: "swagger"
+    description: "Exposed Swagger definition reveals API structure"
     severity: medium
 
-  - name: Jenkins
-    path: /jenkins/login
-    signature: "Dashboard [Jenkins]"
-    description: "Jenkins instance may allow unauthorized access"
-    severity: high
+  - name: Swagger UI - Docs
+    path: /docs/
+    signature: "Swagger UI"
+    description: "Exposed API documentation can reveal endpoint details"
+    severity: medium
 
-  - name: Kubernetes Dashboard
-    path: /api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/
-    signature: "Kubernetes Dashboard"
-    description: "Exposed Kubernetes dashboard may allow cluster control"
-    severity: critical
-
-  # Common backup files
-  - name: SQL Dump
-    path: /dump.sql
-    signature: "INSERT INTO"
-    description: "Database dump may contain sensitive data"
-    severity: high
-
-  - name: Backup Archive
-    path: /backup.zip
-    signature: "PK"
-    description: "Backup archive may contain sensitive files"
-    severity: high
+  - name: OpenAPI
+    path: /openapi.json
+    signature: "openapi"
+    description: "Exposed OpenAPI definition reveals API structure"
+    severity: medium
+    
+  - name: API Documentation
+    path: /api/docs
+    signature: "API"
+    description: "Exposed API documentation reveals endpoint structure"
+    severity: medium
