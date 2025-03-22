@@ -51,3 +51,4 @@ perf.data*
 # Temporary files
 /tmp/
 .tmp/
+cache/dns_cache/db
