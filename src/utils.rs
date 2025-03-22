@@ -11,35 +11,79 @@ use rand::prelude::*;
 
 /// Read domains from a file, one domain per line
 pub fn read_domains(file_path: &str) -> Result<Vec<String>> {
-    read_lines(file_path)
+    let lines = read_lines(file_path)?;
+    
+    // Deduplicate the domains
+    let mut unique_domains = Vec::new();
+    for domain in lines {
+        if !unique_domains.contains(&domain) {
+            unique_domains.push(domain);
+        }
+    }
+    
+    Ok(unique_domains)
 }
 
-/// Normalize a domain name
+/// Normalize a domain name by removing leading/trailing whitespace
+/// and converting to lowercase
 pub fn normalize_domain(domain: &str) -> String {
-    // Remove protocol if present
-    let domain = if let Some(domain_part) = domain.strip_prefix("http://") {
-        domain_part
-    } else if let Some(domain_part) = domain.strip_prefix("https://") {
-        domain_part
-    } else {
-        domain
-    };
-    
-    // Remove path and parameters
-    let domain = domain.split('/').next().unwrap_or(domain);
-    let domain = domain.split('?').next().unwrap_or(domain);
-    let domain = domain.split('#').next().unwrap_or(domain);
-    
-    // Remove ports
-    let domain = domain.split(':').next().unwrap_or(domain);
-    
-    // Handle edge cases
-    let domain = domain.trim().to_lowercase();
-    
-    domain.to_string()
+    domain.trim().to_lowercase()
 }
 
-/// Build a URL from a domain and path
+/// Check if a string is a valid domain name
+pub fn is_valid_domain(domain: &str) -> bool {
+    // Basic domain validation
+    // More sophisticated validation might use regex or DNS libraries
+    
+    // Check for leading/trailing whitespace - fail immediately
+    if domain != domain.trim() {
+        return false;
+    }
+    
+    // Check if empty
+    if domain.is_empty() {
+        return false;
+    }
+    
+    // Check length constraints
+    if domain.len() > 253 {
+        return false;
+    }
+    
+    // Split into labels and validate each
+    let labels: Vec<&str> = domain.split('.').collect();
+    
+    // Domain must have at least one dot (two labels)
+    if labels.len() < 2 {
+        return false;
+    }
+    
+    // Check each label
+    for label in labels {
+        // Each label must be 1-63 characters
+        if label.is_empty() || label.len() > 63 {
+            return false;
+        }
+        
+        // Labels must start and end with alphanumeric
+        let chars: Vec<char> = label.chars().collect();
+        if !chars[0].is_alphanumeric() || !chars[chars.len() - 1].is_alphanumeric() {
+            // Special case for IDN (punycode) domains
+            if !label.starts_with("xn--") {
+                return false;
+            }
+        }
+        
+        // Labels can only contain alphanumeric and hyphen
+        if !label.chars().all(|c| c.is_alphanumeric() || c == '-') {
+            return false;
+        }
+    }
+    
+    true
+}
+
+/// Build a URL with optional HTTP/HTTPS scheme
 pub fn build_url(domain: &str, path: &str) -> String {
     let domain = normalize_domain(domain);
     let base_url = if domain.starts_with("http://") || domain.starts_with("https://") {
@@ -83,11 +127,26 @@ pub fn chunk_vector<T: Clone>(vec: Vec<T>, chunk_size: usize) -> Vec<Vec<T>> {
     result
 }
 
+/// Format duration in seconds to a human-readable string
+pub fn format_duration(seconds: f64) -> String {
+    let hours = (seconds / 3600.0).floor();
+    let minutes = ((seconds - hours * 3600.0) / 60.0).floor();
+    let remaining_seconds = seconds - hours * 3600.0 - minutes * 60.0;
+    
+    if hours > 0.0 {
+        format!("{}h {}m {:.1}s", hours, minutes, remaining_seconds)
+    } else if minutes > 0.0 {
+        format!("{}m {:.1}s", minutes, remaining_seconds)
+    } else {
+        format!("{:.1}s", remaining_seconds)
+    }
+}
+
 /// Create a random backoff delay between min_ms and max_ms
 pub async fn random_backoff(min_ms: u64, max_ms: u64) {
     let mut rng = rand::thread_rng();
     let backoff_ms = rng.gen_range(min_ms..=max_ms);
-    debug!("🕒 Backing off for {}ms", backoff_ms);
+    debug!(" Backing off for {}ms", backoff_ms);
     sleep(Duration::from_millis(backoff_ms)).await;
 }
 
@@ -126,7 +185,7 @@ where
     }
     
     let elapsed = start.elapsed();
-    debug!("Batch processing completed in {:?}", elapsed);
+    debug!("Batch processing completed in {}", format_duration(elapsed.as_secs_f64()));
     
     Ok(results)
 }
@@ -149,7 +208,7 @@ pub fn read_lines(file_path: &str) -> Result<Vec<String>> {
         }
     }
     
-    info!("📋 Read {} lines from {}", lines.len(), file_path);
+    info!(" Read {} lines from {}", lines.len(), file_path);
     debug!("  Total lines: {}, valid lines: {}", line_count, lines.len());
     
     Ok(lines)
