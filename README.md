@@ -2,6 +2,12 @@
 
 # FATT (Find All The Things)
 
+[![Rust Tests](https://github.com/copyleftdev/fatt/actions/workflows/test.yml/badge.svg)](https://github.com/copyleftdev/fatt/actions/workflows/test.yml)
+[![License: HFPL](https://img.shields.io/badge/License-HFPL-blue.svg)](LICENSE)
+[![Rust Version](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
+[![GitHub issues](https://img.shields.io/github/issues/copyleftdev/fatt)](https://github.com/copyleftdev/fatt/issues)
+[![GitHub stars](https://img.shields.io/github/stars/copyleftdev/fatt)](https://github.com/copyleftdev/fatt/stargazers)
+
 A high-performance, modular, asynchronous, and distributed security scanning CLI tool designed to rapidly identify sensitive or exposed files and directories across millions of domains.
 
 ## Features
