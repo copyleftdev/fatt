@@ -1,0 +1,156 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Run workflow when a version tag is pushed (e.g., v1.0.0)
+
+jobs:
+  build-and-release:
+    name: Build and Release for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            target: x86_64-unknown-linux-gnu
+            asset_name: fatt-linux-amd64
+            artifact_name: fatt-linux-amd64
+            strip: true
+          - os: macos-latest
+            platform: macos
+            target: x86_64-apple-darwin
+            asset_name: fatt-macos-amd64
+            artifact_name: fatt-macos-amd64
+            strip: true
+          - os: macos-latest
+            platform: macos
+            target: aarch64-apple-darwin
+            asset_name: fatt-macos-arm64
+            artifact_name: fatt-macos-arm64
+            strip: true
+          - os: windows-latest
+            platform: windows
+            target: x86_64-pc-windows-msvc
+            asset_name: fatt-windows-amd64.exe
+            artifact_name: fatt-windows-amd64
+            strip: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target ${{ matrix.target }}
+
+      - name: Strip binary (Unix)
+        if: matrix.strip
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            strip target/${{ matrix.target }}/release/fatt
+          elif [ "${{ matrix.platform }}" = "macos" ]; then
+            strip target/${{ matrix.target }}/release/fatt
+          fi
+
+      - name: Prepare artifact (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          mkdir ${{ matrix.artifact_name }}
+          cp target/${{ matrix.target }}/release/fatt.exe ${{ matrix.artifact_name }}/
+          cp LICENSE ${{ matrix.artifact_name }}/
+          cp -r rule-examples ${{ matrix.artifact_name }}/
+          7z a -tzip ${{ matrix.artifact_name }}.zip ${{ matrix.artifact_name }}
+        shell: bash
+
+      - name: Prepare artifact (Unix)
+        if: matrix.platform != 'windows'
+        run: |
+          mkdir ${{ matrix.artifact_name }}
+          cp target/${{ matrix.target }}/release/fatt ${{ matrix.artifact_name }}/
+          cp LICENSE ${{ matrix.artifact_name }}/
+          cp -r rule-examples ${{ matrix.artifact_name }}/
+          tar -czf ${{ matrix.artifact_name }}.tar.gz ${{ matrix.artifact_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            ${{ matrix.artifact_name }}.zip
+            ${{ matrix.artifact_name }}.tar.gz
+          if-no-files-found: ignore
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Extract tag name
+        id: extract_tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          name: FATT ${{ steps.extract_tag.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/*/*.zip
+            artifacts/*/*.tar.gz
+          body: |
+            # FATT (Find All The Things) ${{ steps.extract_tag.outputs.VERSION }}
+            
+            A high-performance, modular, asynchronous, and distributed security scanning CLI tool.
+            
+            ## Downloads
+            
+            - **Windows**: fatt-windows-amd64.exe
+            - **macOS Intel**: fatt-macos-amd64
+            - **macOS Apple Silicon**: fatt-macos-arm64
+            - **Linux**: fatt-linux-amd64
+            
+            ## Installation
+            
+            Extract the archive and run the executable from your terminal or command prompt.
+            
+            ```
+            # Linux/macOS
+            chmod +x fatt
+            ./fatt scan -i domains.txt
+            
+            # Windows
+            fatt.exe scan -i domains.txt
+            ```
+            
+            ## Changelog
+            
+            <!-- Add your release notes here -->

@@ -27,6 +27,32 @@ cd fatt
 cargo build --release
 ```
 
+## Releases
+
+FATT is available as pre-built binaries for Windows, macOS (Intel and Apple Silicon), and Linux. These binaries are automatically generated through our CI/CD pipeline whenever a new release is tagged.
+
+### Download Pre-built Binaries
+
+Visit the [Releases page](https://github.com/copyleftdev/fatt/releases) to download the latest version for your platform:
+
+- **Windows**: `fatt-windows-amd64.zip`
+- **macOS Intel**: `fatt-macos-amd64.tar.gz`
+- **macOS Apple Silicon**: `fatt-macos-arm64.tar.gz`
+- **Linux**: `fatt-linux-amd64.tar.gz`
+
+Each release package includes the executable, LICENSE file, and rule-examples directory.
+
+### Creating a Release
+
+For maintainers, creating a new release is as simple as pushing a new version tag:
+
+```bash
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+```
+
+This will trigger the GitHub Actions workflow that builds and packages FATT for all platforms.
+
 ## Quick Start
 
 ```bash
