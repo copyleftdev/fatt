@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use futures::StreamExt;
 use reqwest::Client;
 use rusqlite::Connection;
 use std::sync::Arc;
@@ -16,7 +15,7 @@ use crate::rules::RuleSet;
 use crate::utils;
 
 /// Create an optimized HTTP client
-fn create_http_client(timeout_secs: u64, connect_timeout_secs: u64) -> Result<Client> {
+pub fn create_http_client(timeout_secs: u64, connect_timeout_secs: u64) -> Result<Client> {
     let timeout = Duration::from_secs(timeout_secs);
     let connect_timeout = Duration::from_secs(connect_timeout_secs);
     
@@ -63,7 +62,7 @@ pub async fn run_scan(config: ScanConfig) -> Result<()> {
     
     // Initialize DNS resolver
     let resolver = Arc::new(
-        DnsResolver::new("cache/dns_cache", config.concurrency, config.dns_timeout as u64)
+        DnsResolver::new("cache", config.dns_cache_size)
             .await
             .context("Failed to initialize DNS resolver")?,
     );
@@ -202,8 +201,8 @@ pub async fn run_scan(config: ScanConfig) -> Result<()> {
     Ok(())
 }
 
-/// Scan a single domain against all rules
-async fn scan_domain(
+/// Scan a domain with all rules in the ruleset
+pub async fn scan_domain(
     domain: &str,
     client: &Client,
     ruleset: &RuleSet,
@@ -213,7 +212,7 @@ async fn scan_domain(
     matches_found: Arc<AtomicUsize>,
 ) -> Result<()> {
     // Resolve domain to IP
-    match resolver.resolve(domain).await {
+    match resolver.lookup(domain).await {
         Ok(ip) => {
             debug!("🔍 Scanning domain: {} ({})", domain, ip.unwrap_or_else(|| "unresolved".to_string()));
             
@@ -243,7 +242,7 @@ async fn scan_domain(
                                     logger::log_success(&domain, &rule.name, &rule.path);
                                     
                                     // Store in database
-                                    let mut conn = db_conn.lock().await;
+                                    let conn = db_conn.lock().await;
                                     if let Err(e) = db::insert_finding(&conn, &domain, &rule.name, &rule.path, true) {
                                         error!("Failed to insert finding: {}", e);
                                     }
@@ -255,7 +254,7 @@ async fn scan_domain(
                                 },
                                 Ok(false) => {
                                     // No match, but path exists
-                                    let mut conn = db_conn.lock().await;
+                                    let conn = db_conn.lock().await;
                                     if let Err(e) = db::insert_finding(&conn, &domain, &rule.name, &rule.path, false) {
                                         error!("Failed to insert finding: {}", e);
                                     }
@@ -308,8 +307,8 @@ async fn scan_domain(
     }
 }
 
-/// Check if a path exists
-async fn check_path(client: &Client, url: &str) -> Result<bool> {
+/// Check if a path exists by making a HEAD request
+pub async fn check_path(client: &Client, url: &str) -> Result<bool> {
     // First try a HEAD request to see if the path exists without downloading content
     match client.head(url).send().await {
         Ok(response) => {
@@ -333,8 +332,8 @@ async fn check_path(client: &Client, url: &str) -> Result<bool> {
     }
 }
 
-/// Check if a path matches a signature
-async fn check_signature(client: &Client, url: &str, signature: &str) -> Result<bool> {
+/// Check if a signature exists in the response body
+pub async fn check_signature(client: &Client, url: &str, signature: &str) -> Result<bool> {
     // Get the path content
     match client.get(url).send().await {
         Ok(response) => {

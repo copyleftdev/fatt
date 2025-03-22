@@ -2,14 +2,14 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fs::File;
-use std::io::{BufReader, BufRead, prelude::*};
+use std::io::{BufReader, prelude::*};
 use std::path::Path;
 use tracing::{info, debug};
 
 use crate::logger;
 
 /// Severity levels for rules
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     Critical,
@@ -29,6 +29,18 @@ impl Severity {
             Severity::Low => 2,
             Severity::Info => 1,
         }
+    }
+}
+
+impl PartialOrd for Severity {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.to_value().cmp(&other.to_value()))
+    }
+}
+
+impl Ord for Severity {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.to_value().cmp(&other.to_value())
     }
 }
 

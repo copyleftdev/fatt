@@ -1,0 +1,23 @@
+rules:
+  - name: "Test Rule 1"
+    path: "/admin"
+    signature: "<title>Admin Panel</title>"
+    description: "Admin panel detection"
+    severity: critical
+
+  - name: "Test Rule 2"
+    path: "/login"
+    signature: "username.*password"
+    description: "Login form detection"
+    severity: medium
+
+  - name: "Test Rule 3"
+    path: "/api/v1/users"
+    signature: "\"users\":"
+    description: "API User endpoint"
+    severity: low
+
+  - name: "Test Rule without severity"
+    path: "/test-path"
+    signature: "test-signature"
+    description: "Test rule without severity level"

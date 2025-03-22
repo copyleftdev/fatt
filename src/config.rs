@@ -1,6 +1,6 @@
 use anyhow::Result;
 use std::path::Path;
-use tracing::{debug, info};
+use tracing;
 
 /// Configuration for scanning
 #[derive(Debug, Clone)]
@@ -43,6 +43,30 @@ pub struct ScanConfig {
 
     /// Only perform DNS resolution (no HTTP requests)
     pub dns_only: bool,
+
+    /// Verbose mode
+    pub verbose: bool,
+}
+
+impl Default for ScanConfig {
+    fn default() -> Self {
+        Self {
+            input_file: "domains.txt".to_string(),
+            rules_file: "rules.yaml".to_string(),
+            concurrency: 10,
+            verbosity: 0,
+            distributed: false,
+            output_file: Some("output.txt".to_string()),
+            db_path: "results.sqlite".to_string(),
+            dns_timeout: 5,
+            http_timeout: 10,
+            connect_timeout: 5,
+            dns_cache_size: 10000,
+            quiet: false,
+            dns_only: false,
+            verbose: false,
+        }
+    }
 }
 
 impl ScanConfig {
@@ -62,6 +86,7 @@ impl ScanConfig {
             dns_cache_size: 10000,
             quiet: false,
             dns_only: false,
+            verbose: false,
         }
     }
     
@@ -69,7 +94,7 @@ impl ScanConfig {
     pub fn validate(&self) -> Result<()> {
         // Check if input file exists
         if !Path::new(&self.input_file).exists() {
-            anyhow::bail!("Input file does not exist: {}", self.input_file);
+            anyhow::bail!("input file does not exist: {}", self.input_file);
         }
         
         // Check if rules file exists
@@ -77,26 +102,97 @@ impl ScanConfig {
             anyhow::bail!("Rules file does not exist: {}", self.rules_file);
         }
         
+        // Check concurrency value
+        if self.concurrency == 0 {
+            anyhow::bail!("Invalid concurrency value: must be greater than 0");
+        }
+        
         Ok(())
     }
     
     /// Log the configuration
     pub fn log_config(&self) {
-        info!("📋 Configuration:");
-        info!("  ⏩ Input file: {}", self.input_file);
-        info!("  ⏩ Rules file: {}", self.rules_file);
-        info!("  ⏩ Concurrency: {}", self.concurrency);
-        info!("  ⏩ Verbosity: {}", self.verbosity);
-        info!("  ⏩ Distributed: {}", self.distributed);
-        info!("  ⏩ Output file: {:?}", self.output_file);
-        info!("  ⏩ Database path: {}", self.db_path);
-        info!("  ⏩ DNS timeout: {}s", self.dns_timeout);
-        info!("  ⏩ HTTP timeout: {}s", self.http_timeout);
-        info!("  ⏩ Connect timeout: {}s", self.connect_timeout);
-        info!("  ⏩ DNS cache size: {}", self.dns_cache_size);
-        info!("  ⏩ Quiet mode: {}", self.quiet);
-        info!("  ⏩ DNS only: {}", self.dns_only);
+        // Use event-based tracing which is more reliably captured by test infrastructure
+        tracing::event!(
+            tracing::Level::INFO,
+            message = "Configuration:"
+        );
         
-        debug!("Configuration validated successfully");
+        // Log each configuration value as a separate event for better test capturing
+        tracing::event!(
+            tracing::Level::INFO,
+            input_file = %self.input_file,
+            message = format!("  input file: {}", self.input_file)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            rules_file = %self.rules_file,
+            message = format!("  rules file: {}", self.rules_file)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            concurrency = self.concurrency,
+            message = format!("  concurrency: {}", self.concurrency)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            dns_timeout = self.dns_timeout,
+            message = format!("  DNS timeout: {}s", self.dns_timeout)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            http_timeout = self.http_timeout,
+            message = format!("  HTTP timeout: {}s", self.http_timeout)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            connect_timeout = self.connect_timeout,
+            message = format!("  connect timeout: {}s", self.connect_timeout)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            verbosity = self.verbosity,
+            message = format!("  verbosity: {}", self.verbosity)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            distributed = self.distributed,
+            message = format!("  distributed: {}", self.distributed)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            output_file = ?self.output_file,
+            message = format!("  output file: {:?}", self.output_file)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            db_path = %self.db_path,
+            message = format!("  database: {}", self.db_path)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            dns_cache_size = self.dns_cache_size,
+            message = format!("  DNS cache size: {}", self.dns_cache_size)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            quiet = self.quiet,
+            message = format!("  quiet mode: {}", self.quiet)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            dns_only = self.dns_only,
+            message = format!("  DNS only: {}", self.dns_only)
+        );
+        tracing::event!(
+            tracing::Level::INFO,
+            verbose = self.verbose,
+            message = format!("  verbose: {}", self.verbose)
+        );
+        
+        tracing::event!(
+            tracing::Level::DEBUG,
+            message = "Configuration validated successfully"
+        );
     }
 }
