@@ -1,0 +1,83 @@
+rules:
+  # Version control systems
+  - name: Git Repository
+    path: /.git/HEAD
+    signature: "ref: refs/"
+    description: "Exposed Git repository can reveal source code and sensitive data"
+    severity: high
+
+  - name: Subversion Repository
+    path: /.svn/wc.db
+    signature: "SQLite format 3"
+    description: "Exposed SVN repository can reveal source code and sensitive data"
+    severity: high
+
+  # Configuration files
+  - name: Environment Variables
+    path: /.env
+    signature: "="
+    description: "Exposed environment file may contain API keys and credentials"
+    severity: critical
+
+  - name: AWS Credentials
+    path: /.aws/credentials
+    signature: "aws_access_key_id"
+    description: "Exposed AWS credentials can lead to cloud account compromise"
+    severity: critical
+
+  - name: Docker Compose
+    path: /docker-compose.yml
+    signature: "version:"
+    description: "Docker compose file may reveal infrastructure details and secrets"
+    severity: medium
+
+  # Framework specific files
+  - name: Laravel Debug Mode
+    path: /debug
+    signature: "Laravel"
+    description: "Laravel application in debug mode exposes configuration details"
+    severity: medium
+
+  - name: Rails Database Config
+    path: /config/database.yml
+    signature: "password:"
+    description: "Database configuration may contain credentials"
+    severity: high
+
+  - name: WordPress Config
+    path: /wp-config.php
+    signature: "DB_PASSWORD"
+    description: "WordPress configuration file contains database credentials"
+    severity: high
+
+  # Backend exposures
+  - name: PHPInfo
+    path: /phpinfo.php
+    signature: "<title>phpinfo()</title>"
+    description: "PHPInfo page reveals detailed server configuration"
+    severity: medium
+
+  - name: Jenkins
+    path: /jenkins/login
+    signature: "Dashboard [Jenkins]"
+    description: "Jenkins instance may allow unauthorized access"
+    severity: high
+
+  - name: Kubernetes Dashboard
+    path: /api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/
+    signature: "Kubernetes Dashboard"
+    description: "Exposed Kubernetes dashboard may allow cluster control"
+    severity: critical
+
+  # Common backup files
+  - name: SQL Dump
+    path: /dump.sql
+    signature: "INSERT INTO"
+    description: "Database dump may contain sensitive data"
+    severity: high
+
+  - name: Backup Archive
+    path: /backup.zip
+    signature: "PK"
+    description: "Backup archive may contain sensitive files"
+    severity: high

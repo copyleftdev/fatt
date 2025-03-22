@@ -1,0 +1,64 @@
+[package]
+name = "fatt"
+version = "0.1.0"
+edition = "2021"
+authors = ["FATT Development Team"]
+description = "Find All The Things - A high-performance, distributed security scanning tool"
+readme = "README.md"
+repository = "https://github.com/username/fatt"
+license = "MIT"
+keywords = ["security", "scanner", "web", "cli", "distributed"]
+categories = ["command-line-utilities", "network-programming"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.28", features = ["full", "macros"] }
+
+# HTTP client
+reqwest = { version = "0.12.15", features = ["json", "rustls-tls"] }
+
+# DNS resolver
+trust-dns-resolver = "0.23.2"
+
+# Database
+rusqlite = { version = "0.34.0", features = ["bundled"] }
+sled = "0.34"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+bincode = "2.0.1"
+csv = "1.1.6"
+
+# CLI
+clap = { version = "4.3", features = ["derive"] }
+
+# Logging and progress
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+indicatif = "0.17"
+console = "0.15"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0.12"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+bytes = "1.4"
+async-trait = "0.1"
+uuid = { version = "1.3", features = ["v4"] }
+url = "2.3"
+rand = "0.9.0"
+tracing-appender = "0.2"
+once_cell = "1.15"
+lazy_static = "1.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+debug = false
