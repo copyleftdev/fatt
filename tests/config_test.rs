@@ -12,7 +12,7 @@ mod tests {
     fn test_scan_config_defaults() {
         // Test default configuration values
         let config = ScanConfig::default();
-        
+
         // Verify default values
         assert_eq!(config.concurrency, 10);
         assert_eq!(config.http_timeout, 10);
@@ -29,7 +29,7 @@ mod tests {
         assert!(!config.quiet);
         assert!(!config.dns_only);
     }
-    
+
     #[test]
     fn test_scan_config_custom() {
         // Create a custom configuration
@@ -48,7 +48,7 @@ mod tests {
         config.dns_cache_size = 5000;
         config.quiet = false;
         config.dns_only = false;
-        
+
         // Verify custom values
         assert_eq!(config.concurrency, 20);
         assert_eq!(config.http_timeout, 15);
@@ -65,43 +65,49 @@ mod tests {
         assert!(!config.quiet);
         assert!(!config.dns_only);
     }
-    
+
     #[test]
     fn test_scan_config_validation() {
         // Test configuration with invalid values
         let mut config = ScanConfig::default();
         config.concurrency = 0; // Invalid concurrency
-        
+
         let validation_result = config.validate();
         assert!(validation_result.is_err());
-        assert!(validation_result.unwrap_err().to_string().contains("concurrency"));
-        
+        assert!(validation_result
+            .unwrap_err()
+            .to_string()
+            .contains("concurrency"));
+
         // Test with missing input file
         let mut config = ScanConfig::default();
         config.input_file = "nonexistent-file.txt".to_string();
-        
+
         let validation_result = config.validate();
         assert!(validation_result.is_err());
-        assert!(validation_result.unwrap_err().to_string().contains("input file"));
-        
+        assert!(validation_result
+            .unwrap_err()
+            .to_string()
+            .contains("input file"));
+
         // Test with valid temporary input file
         let temp_dir = tempdir().unwrap();
         let temp_file = temp_dir.path().join("test-domains.txt");
         std::fs::write(&temp_file, "example.com\ntest.com").unwrap();
-        
+
         let mut config = ScanConfig::default();
         config.input_file = temp_file.to_string_lossy().to_string();
-        
+
         let validation_result = config.validate();
         assert!(validation_result.is_ok());
     }
-    
+
     // A more direct test approach for logging
     #[test]
     fn test_config_log_output() {
         // Create a log capture instance
         let log_capture = LogCapture::new();
-        
+
         // Run the test with log capturing
         log_capture.capture_logs(|| {
             // Create a test configuration with known values
@@ -110,17 +116,17 @@ mod tests {
             config.http_timeout = 20;
             config.input_file = "test-domains.txt".to_string();
             config.db_path = "test-results.sqlite".to_string();
-            
+
             // Log a simple test message
             tracing::info!("Simple log test");
-            
+
             // Log the configuration
             config.log_config();
         });
-        
+
         // Print all captured logs for debugging
         log_capture.print_logs();
-        
+
         // Assert logs contain expected content
         assert!(log_capture.contains("Simple log test"));
         assert!(log_capture.contains("Configuration:"));
