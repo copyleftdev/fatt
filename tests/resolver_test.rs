@@ -75,7 +75,6 @@ async fn test_resolver_concurrency() -> anyhow::Result<()> {
 async fn test_resolver_cache() -> anyhow::Result<()> {
     // Create a temporary directory for DNS cache
     let _temp_dir = tempdir()?;
-    // We're using a temporary directory now, no need for cache_path variable
 
     // Create resolver with caching
     let resolver = DnsResolver::new_for_testing()?;
